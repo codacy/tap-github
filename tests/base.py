@@ -80,6 +80,7 @@ class TestGithubBase(unittest.TestCase):
             'stargazers',
             'team_members',
             'team_memberships',
+            'team_repositories',
             'teams'
         }
 

@@ -39,7 +39,8 @@ KEY_PROPERTIES = {
     'repos': ['id'],
     'teams': ['id'],
     'team_members': ['id'],
-    'team_memberships': ['url']
+    'team_memberships': ['url'],
+    'team_repositories': ['id']
 }
 
 class AuthException(Exception):
@@ -266,6 +267,11 @@ def get_all_teams(schemas, repo_path, state, mdata):
                     for team_memberships_rec in get_all_team_memberships(team_slug, schemas['team_memberships'], repo_path, state, mdata):
                         singer.write_record('team_memberships', team_memberships_rec, time_extracted=extraction_time)
 
+                if schemas.get('team_repositories'):
+                    team_slug = r['slug']
+                    for team_repositories_rec in get_all_team_repositories(team_slug, schemas['team_repositories'], repo_path, state, mdata):
+                        singer.write_record('team_repositories', team_repositories_rec, time_extracted=extraction_time)
+
     return state
 
 def get_all_team_members(team_slug, schemas, repo_path, state, mdata):
@@ -310,6 +316,25 @@ def get_all_team_memberships(team_slug, schemas, repo_path, state, mdata):
                     yield rec
     return state
 
+def get_all_team_repositories(team_slug, schemas, repo_path, state, mdata):
+    org = repo_path.split('/')[0]
+    with metrics.record_counter('team_repositories') as counter:
+        for response in authed_get_all_pages(
+                'team_repositories',
+                'https://api.github.com/orgs/{}/teams/{}/repos?sort=created_at&direction=desc'.format(org, team_slug)
+        ):
+            team_repositories = response.json()
+            for r in team_repositories:
+                r['_sdc_repository'] = repo_path
+
+                # transform and write release record
+                with singer.Transformer() as transformer:
+                    rec = transformer.transform(r, schemas, metadata=metadata.to_map(mdata))
+                counter.increment()
+
+                yield rec
+
+    return state
 
 def get_all_issue_events(schemas, repo_path, state, mdata):
     bookmark_value = get_bookmark(state, repo_path, "issue_events", "since")
@@ -934,7 +959,7 @@ SYNC_FUNCTIONS = {
 SUB_STREAMS = {
     'pull_requests': ['reviews', 'review_comments', 'pr_commits'],
     'projects': ['project_cards', 'project_columns'],
-    'teams': ['team_members', 'team_memberships']
+    'teams': ['team_members', 'team_memberships', 'team_repositories']
 }
 
 def do_sync(config, state, catalog):
