@@ -326,6 +326,7 @@ def get_all_team_repositories(team_slug, schemas, repo_path, state, mdata):
             team_repositories = response.json()
             for r in team_repositories:
                 r['_sdc_repository'] = repo_path
+                r['team_slug'] = team_slug
 
                 # transform and write release record
                 with singer.Transformer() as transformer:

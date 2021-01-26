@@ -22,6 +22,12 @@
         "string"
       ]
     },
+    "team_slug": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
     "url": {
       "type": [
         "null",
